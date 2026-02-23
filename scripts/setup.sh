@@ -1,0 +1,8 @@
+#!/bin/bash
+echo "--- Starting System Hardening ---"
+sudo yum update -y
+sudo yum install -y httpd
+sudo systemctl start httpd
+sudo systemctl enable httpd
+echo "<h1>System Status: Operational | Secured by Justin</h1>" | sudo tee /var/www/html/index.html
+echo "--- Deployment Complete ---"
