@@ -175,6 +175,19 @@ It checks:
 
 ---
 
+## Evidence and Validation
+
+The following documents provide architecture reasoning, operational validation records, troubleshooting workflows, and a plan for visual evidence:
+
+| Document | Purpose |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Full architecture breakdown with component table and security design principles |
+| [docs/VALIDATION_LOG.md](docs/VALIDATION_LOG.md) | Validation checklist, local commands, CI summary, and result log template |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | SSH failures, security group issues, script/YAML errors, secret hygiene fixes, escalation notes |
+| [screenshots/README.md](screenshots/README.md) | Screenshot evidence plan — what to capture, what to redact, where to store |
+
+---
+
 ## Next Improvements
 
 - Add screenshots of EC2 instance settings with sensitive data redacted
