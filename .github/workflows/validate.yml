@@ -162,9 +162,11 @@ jobs:
             echo "PASS: No .env files found"
           fi
 
-          # Check for PEM/RSA private key markers in file content
+          # Check for PEM/RSA private key markers in file content.
+          # Pattern requires the full PEM header (-----BEGIN) so that documentation
+          # examples that merely mention "BEGIN RSA PRIVATE KEY" don't false-positive.
           if grep -r --include='*.sh' --include='*.md' --include='*.txt' --include='*.conf' \
-               -l 'BEGIN RSA PRIVATE KEY\|BEGIN OPENSSH PRIVATE KEY\|BEGIN EC PRIVATE KEY' \
+               -l '\-\-\-\-\-BEGIN RSA PRIVATE KEY\|\-\-\-\-\-BEGIN OPENSSH PRIVATE KEY\|\-\-\-\-\-BEGIN EC PRIVATE KEY' \
                --exclude-dir='.git' . 2>/dev/null | grep -q .; then
             echo "FAIL: Private key markers found in file content"
             FAIL=1

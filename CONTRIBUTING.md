@@ -24,6 +24,8 @@ main
 
 Do not create hotfix branches unless there is an actual production bug or urgent patch.
 
+Evidence and validation branches should use the naming convention `feature/validation-evidence`. Documentation-only updates should include a brief validation note in the PR body confirming no secrets were introduced and any scripts still pass `bash -n`.
+
 ---
 
 ## Pull Request Rules
