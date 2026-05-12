@@ -1,0 +1,41 @@
+# Environment and secrets — never commit these
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# Terraform state — contains sensitive resource identifiers
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node.js (if tooling is added)
+node_modules/
+npm-debug.log*
+
+# Python (if scripts or tooling is added)
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+.venv/
+venv/
+
+# Logs
+*.log
+logs/
+
+# Editor temp files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/settings.json

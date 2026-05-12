@@ -1,100 +1,192 @@
 # AWS EC2 Secure Deployment
 
-Secure AWS EC2 deployment lab with hardened instance setup, baseline server configuration, SSH controls, and cloud support documentation.
+**Secure AWS EC2 deployment lab documenting Linux instance provisioning, SSH hardening, security group controls, and operational validation — built as a cloud support portfolio project.**
+
+[![Repo Validation](https://github.com/CartierC/aws-ec2-secure-deployment/actions/workflows/validate.yml/badge.svg)](https://github.com/CartierC/aws-ec2-secure-deployment/actions/workflows/validate.yml)
+
+---
 
 ## Purpose
 
-This repo documents a practical AWS EC2 support workflow: launch a Linux instance, restrict access, apply baseline hardening, validate SSH/security group behavior, and leave clear operational notes for review.
+This repo documents a practical, end-to-end AWS EC2 support workflow:
+
+- Launch a Linux EC2 instance with a restricted security group
+- Configure SSH key-based access (no password authentication)
+- Apply baseline server hardening using a reference `sshd_config`
+- Validate access controls and document the operational baseline
+- Produce clear, handoff-ready notes for cloud support review
+
+This is a structured lab demonstrating the operational thinking required for cloud support, AWS support, and junior DevOps roles.
+
+---
 
 ## Role Alignment
 
-**Target roles:** Cloud Support Engineer, AWS Support Associate, Junior Cloud Engineer, Technical Operations
+**Target roles:**
 
-This project is positioned for support and infrastructure roles where hiring managers need to see that the candidate understands secure access, basic cloud operations, and troubleshooting documentation.
+- Cloud Support Engineer
+- AWS Support Associate
+- Junior Cloud Engineer
+- Technical Operations
+- DevOps Support
+- Cloud Security Support
 
-## Skills Demonstrated
+This project demonstrates that a candidate understands secure access patterns, basic cloud operations, SSH/security group troubleshooting, and documentation discipline — the core signals for support and infrastructure roles.
 
-- AWS EC2 instance deployment concepts
-- Linux server access and baseline configuration
-- SSH key-based access controls
-- Security group review and least-access thinking
-- Cloud support documentation
-- Infrastructure troubleshooting workflow
-- Operational hygiene and repeatable notes
+---
 
-## Tech Stack
+## Architecture Overview
 
-- AWS EC2
-- Linux / Ubuntu concepts
-- SSH
-- Security Groups
-- Bash documentation patterns
-- Markdown runbooks
+```
+Local Admin Machine
+        │
+        ▼
+AWS IAM / AWS CLI
+        │
+        ▼
+EC2 Instance (Amazon Linux / Ubuntu)
+        │
+        ├── Security Group
+        │     └── Inbound: SSH (port 22) restricted to trusted IP only
+        │
+        ├── SSH Key Pair
+        │     └── PubkeyAuthentication only — no password login
+        │
+        └── Baseline Linux Hardening
+              ├── sshd_config: PermitRootLogin no, MaxAuthTries 3
+              ├── OS packages updated
+              └── Validation / Operational Notes captured
+```
 
-## Project Structure
+---
+
+## Folder Structure
 
 ```text
 aws-ec2-secure-deployment/
-├── README.md
-├── docs/
-│   └── runbook.md
+├── README.md                        ← Project overview and usage guide
+├── CONTRIBUTING.md                  ← Branching model and PR rules
+├── .gitignore                       ← Excludes .pem, .env, secrets
 ├── configs/
-│   └── security-baseline-notes.md
-├── screenshots/
-│   └── README.md
-└── sample-output/
-    └── ec2-validation-output.txt
+│   └── sshd_config                  ← Hardened SSH daemon config reference
+├── scripts/
+│   └── setup.sh                     ← Baseline instance setup script
+└── .github/
+    └── workflows/
+        └── validate.yml             ← CI: structure, syntax, and secret hygiene checks
 ```
 
-Some folders may contain documentation placeholders until screenshots, command output, or AWS console evidence are added.
+---
 
-## How to Run or Review
+## Prerequisites
 
-This repo is documentation-first. A reviewer should inspect:
+- AWS account with access to EC2
+- AWS CLI configured (`aws configure`) with IAM permissions for:
+  - EC2 instance launch and termination
+  - Security group create/modify
+  - Key pair create
+- An SSH key pair (`.pem` file — never commit this)
+- Linux or macOS terminal
+- Basic understanding of EC2, security groups, and SSH
 
-1. The deployment checklist
-2. SSH/security group assumptions
-3. Baseline hardening notes
-4. Sample validation output
-5. Next improvement list
+---
 
-Suggested review flow:
+## Usage
+
+**1. Clone the repo for review:**
 
 ```bash
 git clone https://github.com/CartierC/aws-ec2-secure-deployment.git
 cd aws-ec2-secure-deployment
-cat README.md
-cat sample-output/ec2-validation-output.txt
 ```
 
-## Sample Output
+**2. Validate shell script syntax locally:**
 
-```text
-EC2 Validation Summary
-Instance access method: SSH key authentication
-Inbound access reviewed: SSH restricted to trusted source IP
-OS baseline reviewed: package updates, user access, firewall notes
-Status: Documentation-ready lab for cloud support review
+```bash
+bash -n scripts/setup.sh
 ```
 
-Full example: `sample-output/ec2-validation-output.txt`
+**3. Make scripts executable before running:**
 
-## What This Project Proves
+```bash
+chmod +x scripts/*.sh
+```
 
-This project proves practical cloud support thinking: secure access first, document the environment clearly, validate the baseline, and make the work understandable for another operator.
+**4. Apply the SSH hardening config to an EC2 instance:**
 
-It does **not** claim production AWS administration experience. It is a structured lab used to show readiness for junior cloud, technical support, and infrastructure operations roles.
+```bash
+# Copy reference config to the instance (adjust key path and IP)
+scp -i path/to/key.pem configs/sshd_config ec2-user@PUBLIC_IP:/tmp/sshd_config
+
+# On the instance: review and apply
+sudo cp /tmp/sshd_config /etc/ssh/sshd_config
+sudo sshd -t   # test config before restarting
+sudo systemctl restart sshd
+```
+
+**5. Connect to the instance via SSH:**
+
+```bash
+ssh -i path/to/key.pem ec2-user@PUBLIC_IP
+```
+
+> **Never commit your `.pem` file.** It is excluded by `.gitignore` and the CI workflow will fail if one is detected.
+
+---
+
+## Security Controls Checklist
+
+- [x] SSH access restricted — inbound port 22 limited to trusted IP in security group
+- [x] No private keys committed — `.gitignore` excludes `.pem` and `.key` files; CI enforces this
+- [x] Security group ingress minimized — no 0.0.0.0/0 SSH exposure
+- [x] IAM least privilege considered — EC2 IAM role and key usage documented
+- [x] Instance patching documented — OS package update step in `scripts/setup.sh`
+- [x] Baseline Linux hardening applied — reference `sshd_config` with root login disabled, key auth only
+- [x] Validation notes captured — CI workflow validates structure, scripts, and secret hygiene
+
+---
+
+## Why This Project Matters
+
+This repo demonstrates:
+
+- **AWS EC2 operational understanding** — instance provisioning, security group configuration, key pair management
+- **Linux administration basics** — SSH daemon hardening, package management, service control
+- **Cloud security awareness** — least-privilege access, secret hygiene, no credentials in source control
+- **GitHub workflow discipline** — protected branches, CI validation, conventional commits, PR-based merge flow
+- **Documentation for support handoff** — clear runbook-style notes a colleague or reviewer can follow without prior context
+
+It does **not** claim production AWS administration experience. It is a structured lab proving readiness for junior cloud, technical support, and infrastructure operations roles.
+
+---
+
+## CI Validation
+
+The `.github/workflows/validate.yml` workflow runs on every push and pull request to `main` and `develop`.
+
+It checks:
+
+| Check | What it validates |
+|---|---|
+| Repo structure | `README.md`, `configs/`, and `scripts/` all exist |
+| Shell script syntax | `bash -n` and ShellCheck on all `scripts/*.sh` files |
+| YAML validation | Python-based YAML parse of any `configs/*.yml` files |
+| Secret hygiene | No `.pem`, `.env`, private key markers, or AWS key patterns found |
+
+---
 
 ## Next Improvements
 
-- Add screenshots of EC2 instance settings with sensitive data hidden
-- Add security group before/after notes
-- Add CloudWatch monitoring notes
+- Add screenshots of EC2 instance settings with sensitive data redacted
+- Add security group before/after comparison notes
+- Add CloudWatch basic monitoring notes
 - Add a teardown checklist to avoid unnecessary AWS costs
-- Add a small Bash validation helper for local Linux checks
+- Add IAM policy example for least-privilege EC2 access
+
+---
 
 ## Recruiter Note
 
-This repo is meant to be reviewed quickly. The core signal is not visual polish; it is proof of AWS, Linux, SSH, and infrastructure documentation discipline.
+This repo is meant to be reviewed quickly. The core signal is not visual polish — it is proof of AWS, Linux, SSH, security group, and infrastructure documentation discipline, combined with a professional Git workflow.
 
 **AWS Cloud Practitioner:** in progress.
