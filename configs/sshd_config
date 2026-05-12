@@ -1,0 +1,39 @@
+# SSH Daemon Configuration — Baseline Hardening Reference
+# Apply to: /etc/ssh/sshd_config on the EC2 instance
+# After changes: sudo systemctl restart sshd
+
+# ── Authentication ────────────────────────────────────────────────────────
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+ChallengeResponseAuthentication no
+UsePAM yes
+
+# ── Access Controls ───────────────────────────────────────────────────────
+# Restrict SSH to a named user (replace ec2-user with your actual user)
+AllowUsers ec2-user
+
+# ── Connection Hardening ──────────────────────────────────────────────────
+MaxAuthTries 3
+LoginGraceTime 30
+ClientAliveInterval 300
+ClientAliveCountMax 2
+X11Forwarding no
+AllowTcpForwarding no
+PermitEmptyPasswords no
+
+# ── Protocol and Ciphers ─────────────────────────────────────────────────
+Protocol 2
+# Modern cipher selection — remove weak ciphers
+Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+KexAlgorithms curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256
+
+# ── Logging ───────────────────────────────────────────────────────────────
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# ── Banner ────────────────────────────────────────────────────────────────
+# Uncomment to display a warning banner on login
+# Banner /etc/issue.net

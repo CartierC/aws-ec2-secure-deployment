@@ -1,0 +1,215 @@
+name: Repo Validation
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  validate:
+    name: Repository Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── A. Repository Structure ──────────────────────────────────────────
+      - name: Check required repo structure
+        run: |
+          echo "==> Checking repository structure..."
+          MISSING=0
+
+          if [ ! -f "README.md" ]; then
+            echo "FAIL: README.md not found"
+            MISSING=1
+          else
+            echo "PASS: README.md exists"
+          fi
+
+          if [ ! -d "configs" ]; then
+            echo "FAIL: configs/ directory not found"
+            MISSING=1
+          else
+            echo "PASS: configs/ exists"
+          fi
+
+          if [ ! -d "scripts" ]; then
+            echo "FAIL: scripts/ directory not found"
+            MISSING=1
+          else
+            echo "PASS: scripts/ exists"
+          fi
+
+          if [ "$MISSING" -ne 0 ]; then
+            echo "Structure validation FAILED."
+            exit 1
+          fi
+
+      # ── B. Shell Script Syntax Validation ────────────────────────────────
+      - name: Validate shell scripts (bash -n)
+        run: |
+          echo "==> Checking shell scripts for syntax errors..."
+          FAIL=0
+          FOUND=0
+
+          for script in scripts/*.sh; do
+            # glob may not expand if no .sh files exist
+            [ -e "$script" ] || continue
+            FOUND=1
+            if bash -n "$script"; then
+              echo "PASS: $script syntax OK"
+            else
+              echo "FAIL: $script has syntax errors"
+              FAIL=1
+            fi
+          done
+
+          if [ "$FOUND" -eq 0 ]; then
+            echo "INFO: No .sh files found in scripts/ — skipping."
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "Shell script validation FAILED."
+            exit 1
+          fi
+
+      - name: ShellCheck (if available)
+        # ShellCheck is pre-installed on ubuntu-latest GitHub runners.
+        # bash -n above catches syntax; ShellCheck catches quality issues.
+        run: |
+          echo "==> Running ShellCheck on shell scripts..."
+          FOUND=0
+          FAIL=0
+
+          for script in scripts/*.sh; do
+            [ -e "$script" ] || continue
+            FOUND=1
+            if shellcheck "$script"; then
+              echo "PASS: $script ShellCheck OK"
+            else
+              echo "WARN: $script has ShellCheck warnings/errors"
+              FAIL=1
+            fi
+          done
+
+          if [ "$FOUND" -eq 0 ]; then
+            echo "INFO: No .sh files found — ShellCheck skipped."
+          fi
+
+          # Treat ShellCheck failures as warnings, not hard errors,
+          # to avoid blocking on style-only issues.
+          if [ "$FAIL" -ne 0 ]; then
+            echo "ShellCheck found issues — review above output."
+          fi
+
+      # ── C. YAML Validation ───────────────────────────────────────────────
+      - name: Validate YAML files in configs/
+        run: |
+          echo "==> Validating YAML files in configs/..."
+          FOUND=0
+          FAIL=0
+
+          for yml in configs/*.yml configs/*.yaml; do
+            [ -e "$yml" ] || continue
+            FOUND=1
+            python3 -c "
+          import sys, yaml
+          try:
+              yaml.safe_load(open('$yml'))
+              print('PASS: $yml is valid YAML')
+          except yaml.YAMLError as e:
+              print('FAIL: $yml — ' + str(e))
+              sys.exit(1)
+          "
+            if [ $? -ne 0 ]; then FAIL=1; fi
+          done
+
+          if [ "$FOUND" -eq 0 ]; then
+            echo "INFO: No YAML files found in configs/ — skipping."
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "YAML validation FAILED."
+            exit 1
+          fi
+
+      # ── D. Security Hygiene ──────────────────────────────────────────────
+      - name: Secret and key hygiene check
+        run: |
+          echo "==> Scanning for accidental secrets or private keys..."
+          FAIL=0
+
+          # Check for .pem files committed to the repo
+          if find . -not -path './.git/*' -name '*.pem' | grep -q .; then
+            echo "FAIL: .pem file(s) found in repository"
+            find . -not -path './.git/*' -name '*.pem'
+            FAIL=1
+          else
+            echo "PASS: No .pem files found"
+          fi
+
+          # Check for .env files
+          if find . -not -path './.git/*' -name '.env' -o -name '.env.*' | grep -q .; then
+            echo "FAIL: .env file(s) found in repository"
+            FAIL=1
+          else
+            echo "PASS: No .env files found"
+          fi
+
+          # Check for PEM/RSA private key markers in file content
+          if grep -r --include='*.sh' --include='*.md' --include='*.txt' --include='*.conf' \
+               -l 'BEGIN RSA PRIVATE KEY\|BEGIN OPENSSH PRIVATE KEY\|BEGIN EC PRIVATE KEY' \
+               --exclude-dir='.git' . 2>/dev/null | grep -q .; then
+            echo "FAIL: Private key markers found in file content"
+            FAIL=1
+          else
+            echo "PASS: No private key markers in file content"
+          fi
+
+          # Check for AWS access key ID patterns (AKIA...)
+          if grep -r --include='*.sh' --include='*.md' --include='*.txt' --include='*.yml' \
+               --include='*.yaml' --include='*.conf' \
+               -E 'AKIA[0-9A-Z]{16}' \
+               --exclude-dir='.git' . 2>/dev/null | grep -q .; then
+            echo "FAIL: AWS Access Key ID pattern detected"
+            FAIL=1
+          else
+            echo "PASS: No AWS access key patterns found"
+          fi
+
+          # Check for hardcoded AWS secret key patterns (40-char alphanumeric after common labels)
+          if grep -r --include='*.sh' --include='*.md' --include='*.txt' --include='*.yml' \
+               --include='*.yaml' --include='*.conf' \
+               -E '(aws_secret|secret_key|AWS_SECRET)[^=]*=[^$][A-Za-z0-9/+]{20,}' \
+               --exclude-dir='.git' . 2>/dev/null | grep -q .; then
+            echo "FAIL: Potential AWS secret key value detected"
+            FAIL=1
+          else
+            echo "PASS: No AWS secret key values found"
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo ""
+            echo "Secret hygiene check FAILED. Remove secrets before merging."
+            exit 1
+          fi
+
+      # ── E. Validation Summary ────────────────────────────────────────────
+      - name: Validation summary
+        run: |
+          echo ""
+          echo "============================================"
+          echo "         REPO VALIDATION SUMMARY           "
+          echo "============================================"
+          echo "  Repo structure checked    : PASS"
+          echo "  Shell scripts checked     : PASS"
+          echo "  YAML configs checked      : PASS"
+          echo "  Secret hygiene checked    : PASS"
+          echo "============================================"
+          echo "All validation checks passed."
